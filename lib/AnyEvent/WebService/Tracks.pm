@@ -6,6 +6,7 @@ use warnings;
 use AnyEvent::HTTP qw(http_request);
 use Carp qw(croak);
 use DateTime;
+use DateTime::Format::ISO8601;
 use MIME::Base64 qw(encode_base64);
 use URI;
 use XML::Parser;
@@ -15,28 +16,7 @@ use AnyEvent::WebService::Tracks::Context;
 use AnyEvent::WebService::Tracks::Project;
 use AnyEvent::WebService::Tracks::Todo;
 
-our $VERSION = '0.01';
-my  $DATETIME_RE = qr/
-    ^
-    (?<year>\d{4})
-    -
-    (?<month>\d\d)
-    -
-    (?<day>\d\d)
-    T
-    (?<hour>\d\d)
-    :
-    (?<minute>\d\d)
-    :
-    (?<second>\d\d)
-    ((?<tz_utc>Z)|(?:
-        (?<tz_dir>[+-])
-        (?<tz_hours>\d\d)
-        :
-        (?<tz_minutes>\d\d)
-    ))
-    $
-/x;
+our $VERSION = '0.02';
 
 sub new {
     my ( $class, %params ) = @_;
@@ -51,19 +31,7 @@ sub new {
 sub parse_datetime {
     my ( $self, $str ) = @_;
 
-    if($str =~ $DATETIME_RE) {
-        my %attrs = %+;
-        my ( $dir, $hours, $minutes, $utc ) = delete @attrs{qw/tz_dir tz_hours tz_minutes tz_utc/};
-        if($utc) {
-            $attrs{'time_zone'} = 'UTC';
-        } else {
-            $attrs{'time_zone'} = sprintf "%s%04d", $dir, $hours * 60 + $minutes;
-        }
-
-        return DateTime->new(%attrs);
-    } else {
-        croak "Unable to parse datetime '$str'";
-    }
+    return DateTime::Format::ISO8601->parse_datetime($str);
 }
 
 sub format_datetime {
@@ -139,7 +107,7 @@ sub do_request {
 
     my ( $username, $password ) = @{$self}{qw/username password/};
 
-    my $auth_token = encode_base64(join(':', $username, $password));
+    my $auth_token = encode_base64(join(':', $username, $password), '');
     $params->{'headers'} = {
         Authorization => "Basic $auth_token",
         Accept        => 'application/xml',
@@ -465,7 +433,7 @@ AnyEvent::WebService::Tracks - Access Tracks' API from AnyEvent
 
 =head1 VERSION
 
-0.01
+0.02
 
 =head1 SYNOPSIS
 
